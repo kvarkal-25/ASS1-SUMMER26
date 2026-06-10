@@ -25,10 +25,11 @@ const STORAGE_KEY = "ssp_session_v1";
  * - use regex, not DOM APIs
  */
 function sanitizeUsername(input) {
-  // TODO: implement
-  return "";
+  if (typeof input !== "string") {
+    return "";
+  }
 
-  
+  return input.replace(/[^A-Za-z0-9_-]/g, "_").slice(0, 20);
 }
 
 /**
@@ -40,7 +41,13 @@ function sanitizeUsername(input) {
  * - MUST use textContent (not innerHTML)
  */
 function renderNotifications(listEl, notifications) {
-  // TODO: implement
+  listEl.innerHTML = "";
+
+  notifications.forEach((notification) => {
+    const li = document.createElement("li");
+    li.textContent = notification;
+    listEl.appendChild(li);
+  });
 }
 
 /** -----------------------------
@@ -62,8 +69,39 @@ function renderNotifications(listEl, notifications) {
  *   - notifications: array of strings
  */
 function parseProfileJson(jsonText) {
-  // TODO: implement
-  return null;
+  try {
+    const profile = JSON.parse(jsonText);
+
+    if (typeof profile !== "object" || profile === null) {
+      return null;
+    }
+
+    if (typeof profile.displayName !== "string") {
+      return null;
+    }
+
+    if (typeof profile.role !== "string") {
+      return null;
+    }
+
+    if (profile.role !== "user" && profile.role !== "admin") {
+      return null;
+    }
+
+    if (!Array.isArray(profile.notifications)) {
+      return null;
+    }
+
+    for (const notification of profile.notifications) {
+      if (typeof notification !== "string") {
+        return null;
+      }
+    }
+
+    return profile;
+  } catch (error) {
+    return null;
+  }
 }
 
 /** -----------------------------
@@ -80,8 +118,18 @@ function parseProfileJson(jsonText) {
  * - Return parsed profile object or null
  */
 async function fetchUserProfile(url) {
-  // TODO: implement
-  return null;
+  try {
+    const response = await fetch(url);
+
+    if (!response.ok) {
+      return null;
+    }
+
+    const text = await response.text();
+    return parseProfileJson(text);
+  } catch (error) {
+    return null;
+  }
 }
 
 /** -----------------------------
@@ -99,7 +147,12 @@ async function fetchUserProfile(url) {
  * - Must NOT store notifications (assume those are dynamic)
  */
 function saveSessionToStorage(profile) {
-  // TODO: implement
+  const session = {
+    displayName: profile.displayName,
+    role: profile.role
+  };
+
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(session));
 }
 
 /**
@@ -109,8 +162,38 @@ function saveSessionToStorage(profile) {
  * - Return object { displayName, role } if valid
  */
 function loadSessionFromStorage() {
-  // TODO: implement
-  return null;
+  try {
+    const saved = localStorage.getItem(STORAGE_KEY);
+
+    if (!saved) {
+      return null;
+    }
+
+    const session = JSON.parse(saved);
+
+    if (typeof session !== "object" || session === null) {
+      return null;
+    }
+
+    if (typeof session.displayName !== "string") {
+      return null;
+    }
+
+    if (typeof session.role !== "string") {
+      return null;
+    }
+
+    if (session.role !== "user" && session.role !== "admin") {
+      return null;
+    }
+
+    return {
+      displayName: session.displayName,
+      role: session.role
+    };
+  } catch (error) {
+    return null;
+  }
 }
 
 /** -----------------------------
@@ -128,7 +211,14 @@ function loadSessionFromStorage() {
  * client-side logic can be manipulated; real authorization is server-side.
  */
 function computeAccessStatus(profile) {
-  // TODO: implement
+  if (!profile || typeof profile !== "object") {
+    return "DENIED";
+  }
+
+  if (profile.role === "admin") {
+    return "GRANTED";
+  }
+
   return "DENIED";
 }
 
